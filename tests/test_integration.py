@@ -1,11 +1,11 @@
 import pytest
-import yaml
 from google.cloud import storage, bigquery
 from google.api_core import exceptions
 import ee
 import os
 import google.auth
 
+from src.config import get_settings, GcpSettings
 # Mark this entire module as 'integration' tests
 pytestmark = pytest.mark.integration
 
@@ -13,22 +13,31 @@ pytestmark = pytest.mark.integration
 @pytest.fixture(scope="module")
 def gcp_config():
     """Loads GCP configuration from the config file."""
+    """Loads GCP settings from environment variables via the app's config logic."""
     try:
-        with open("config.yml", "r") as f:
-            return yaml.safe_load(f)["gcp"]
-    except FileNotFoundError:
-        pytest.fail("config.yml not found. Make sure you are running pytest from the project root.")
+        settings = get_settings()
+        # Invalidate the cache for subsequent tests in other modules if they also use get_settings.
+        # This ensures they re-read the environment if it changes.
+        get_settings.cache_clear()
+        return settings.gcp
+    except Exception as e:
+        # Pydantic's ValidationError is a good one to catch, but any exception here is a failure.
+        pytest.fail(
+            "Failed to load settings from environment. "
+            "Ensure GCP_PROJECT, GCP_BQ_DATASET, and GCP_BUCKET are set. "
+            f"Error: {e}"
+        )
 
 
 @pytest.mark.no_mock_ee  # Opt-out of the autouse ee mock from conftest.py
-def test_gcp_connectivity(gcp_config):
+def test_gcp_connectivity(gcp_config: GcpSettings):
     """
     Performs a series of read-only checks to verify connectivity and
     permissions for GCS, BigQuery, and Earth Engine.
     """
-    project = gcp_config["project"]
-    bucket_name = gcp_config["bucket"]
-    dataset_id = gcp_config["bq-dataset"]
+    project = gcp_config.project
+    bucket_name = gcp_config.bucket
+    dataset_id = gcp_config.bq_dataset
 
     # 1. Test Google Cloud Storage Connection
     try:

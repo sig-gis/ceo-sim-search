@@ -1,4 +1,0 @@
-gcp:
-  project: 'collect-earth-online'
-  bq-dataset: 'sim_search_test'
-  bucket: 'sim-search'

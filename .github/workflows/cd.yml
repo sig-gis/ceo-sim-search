@@ -39,12 +39,12 @@ jobs:
       - name: Build and Push Docker image
         run: |-
           gcloud builds submit \
-          --tag gcr.io/${{ secrets.GCP_PROJECT_ID }}/gcp-sim-search-api:latest 
+          --tag gcr.io/${{ secrets.GCP_PROJECT_ID }}/ceo-sim-search-api:latest 
 
       - name: Deploy to Cloud Run
         run: |-
-          gcloud run deploy gcp-sim-search-api \
-            --image gcr.io/${{ secrets.GCP_PROJECT_ID }}/gcp-sim-search-api:latest \
+          gcloud run deploy ceo-sim-search-api \
+            --image gcr.io/${{ secrets.GCP_PROJECT_ID }}/ceo-sim-search-api:latest \
             --platform managed \
             --region us-central1 \
             --allow-unauthenticated \

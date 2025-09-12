@@ -1,4 +1,4 @@
-# gcp-sim-search
+# ceo-sim-search
 
 Enabling similarity search on vector features using [Google's Satellite Embeddings](https://developers.google.com/earth-engine/datasets/catalog/GOOGLE_SATELLITE_EMBEDDING_V1_ANNUAL) (Embedding Fields Model data).
 
