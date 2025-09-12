@@ -59,7 +59,7 @@ async def startup_event():
             project=project,
             opt_url="https://earthengine-highvolume.googleapis.com"
         )
-        ee.data.setWorkloadTag("gcp-sim-search-api")
+        ee.data.setWorkloadTag("ceo-sim-search-api")
         logger.info("Earth Engine initialized successfully for project %s.", project)
     except ValidationError as e:
         logger.critical(
