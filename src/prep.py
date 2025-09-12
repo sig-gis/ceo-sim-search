@@ -2,7 +2,7 @@ import os
 import ee
 import google.auth
 
-from src.utils import efm_plot_agg, export_to_bq, postprocess_bq, vector_index, plot_to_df, df_to_fc
+from src.utils import efm_plot_agg, export_to_bq, postprocess_bq, vector_index, plot_to_gdf, gdf_to_fc
 
 
 def generate_processed_table_names(gcp_file: str, years: list[int]) -> dict[int, str]:
@@ -22,8 +22,8 @@ def prep_tables(gcp_file:str,
                 years:list[int],
                 ) -> dict[int, str]:
     
-    plot_df = plot_to_df(gcp_file)
-    plot_fc = df_to_fc(plot_df)
+    plot_gdf = plot_to_gdf(gcp_file)
+    plot_fc = gdf_to_fc(plot_gdf)
     
     fc_embeddings = efm_plot_agg(plot_fc,years) # export EFM image data (n=64 bands) to each feature in collection
     
@@ -45,7 +45,7 @@ def prep_tables(gcp_file:str,
 
             # BigQuery does not allow creating a VECTOR index on a table with < 5k rows.
             # Perform the vector_index fn as the last part of postprocessing if the condition is met.
-            row_count = len(plot_df)
+            row_count = len(plot_gdf)
             if row_count > 5000:
                 print(f"Row count ({row_count}) > 5000. Creating Vector Index...")
                 vector_index(project,dataset,pp_table,embedding_col='embedding',wait=True)

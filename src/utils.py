@@ -79,7 +79,7 @@ def ee_task_list_poller(task_description: str, items: int, sleep_minutes: int):
     print(f"All '{task_description}' tasks are complete.")
     return None
 
-def plot_to_df(file:str):
+def plot_to_gdf(file:str):
         if "gs://" in file:
             print('reading from gcs in-memory..')
             client = storage.Client()
@@ -96,21 +96,20 @@ def plot_to_df(file:str):
             plots = gpd.read_file(file)
         
         # --- Schema and dtype enforcement ---
-        required_cols = {'plotid', 'center_lon', 'center_lat', 'size_m'}
+        required_cols = {'plotid', 'geometry'}
         if not required_cols.issubset(plots.columns):
             missing = required_cols - set(plots.columns)
             raise KeyError(f"Input file is missing required columns: {sorted(list(missing))}")
         
         # Reduce to a consistent schema and order, and enforce types
-        schema_order = ['plotid', 'center_lon', 'center_lat', 'size_m']
+        schema_order = ['plotid', 'geometry']
         plots = plots[schema_order]
-        plots['size_m'] = plots['size_m'].astype(float).astype(int)
         plots['plotid'] = plots['plotid'].astype(float).astype(int)
         
         return plots 
         
-def df_to_fc(df):
-    fc = geemap.df_to_ee(df,latitude="center_lat",longitude="center_lon")
+def gdf_to_fc(gdf:gpd.GeoDataFrame):
+    fc = geemap.gdf_to_ee(gdf)
     return fc
 
 def efm_plot_agg(fc:ee.FeatureCollection,
@@ -135,7 +134,7 @@ def efm_plot_agg(fc:ee.FeatureCollection,
                         .mosaic())
                         fc_reduced = efm_yr.reduceRegions(collection=fc,
                                                         reducer=ee.Reducer.mean(),
-                                                        scale=fc.first().getNumber('size_m'),
+                                                        scale=10,
                                                         crs='EPSG:4326',
                                                         crsTransform=None,
                                                         maxPixelsPerRegion=1e12,
