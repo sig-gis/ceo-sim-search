@@ -26,6 +26,7 @@ def test_prep_tables_small_dataset_no_vector_index(
     gcp_file = "gs://fake-bucket/fake-file.geojson"
     project = "test-project"
     dataset = "test-dataset"
+    topic_id = "test_topic"
     years = [2020]
     table_base_name = "fake-file"
     exported_table_name = f"{table_base_name}_{years[0]}_random123"
@@ -37,7 +38,7 @@ def test_prep_tables_small_dataset_no_vector_index(
     mock_export_to_bq.return_value = exported_table_name
 
     # Act: Call the function under test
-    prep_tables(gcp_file, project, dataset, years)
+    prep_tables(gcp_file, project, dataset, years, topic_id)
 
     # Assert: Verify that the mocked functions were called correctly
     mock_plot_to_gdf.assert_called_once_with(gcp_file)
@@ -78,6 +79,7 @@ def test_prep_tables_large_dataset_creates_vector_index(
     gcp_file = "gs://fake-bucket/fake-file.geojson"
     project = "test-project"
     dataset = "test-dataset"
+    topic_id = "test_topic"
     years = [2020]
     table_base_name = "fake-file"
     exported_table_name = f"{table_base_name}_{years[0]}_random123"
@@ -91,7 +93,7 @@ def test_prep_tables_large_dataset_creates_vector_index(
     mock_postprocess_bq.return_value = processed_table_name
 
     # Act: Call the function under test
-    prep_tables(gcp_file, project, dataset, years)
+    prep_tables(gcp_file, project, dataset, years, topic_id)
 
     # Assert: Verify that the mocked functions were called correctly
     mock_plot_to_gdf.assert_called_once_with(gcp_file)
