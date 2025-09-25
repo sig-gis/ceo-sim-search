@@ -87,7 +87,12 @@ async def create_prep_job(
     table_names = generate_processed_table_names(request.gcp_file, request.years)
 
     background_tasks.add_task(
-        prep_tables, request.gcp_file, settings.gcp.project, settings.gcp.bq_dataset, request.years
+        prep_tables,
+        request.gcp_file,
+        settings.gcp.project,
+        settings.gcp.bq_dataset,
+        request.years,
+        settings.gcp.pubsub_topic_table_jobs
     )
     return {"message": "Data preparation job accepted and running in the background.", "tables": table_names}
 

@@ -1,5 +1,6 @@
 import pytest
 from google.cloud import storage, bigquery
+from google.cloud import pubsub_v1
 from google.api_core import exceptions
 import ee
 import os
@@ -38,6 +39,7 @@ def test_gcp_connectivity(gcp_config: GcpSettings):
     project = gcp_config.project
     bucket_name = gcp_config.bucket
     dataset_id = gcp_config.bq_dataset
+    pubsub_topic_id = gcp_config.pubsub_topic_table_jobs
 
     # 1. Test Google Cloud Storage Connection
     try:
@@ -81,3 +83,19 @@ def test_gcp_connectivity(gcp_config: GcpSettings):
         print("Successfully initialized Earth Engine and fetched info.")
     except Exception as e:
         pytest.fail(f"Failed to initialize or communicate with Earth Engine: {e}")
+    
+    # 4. Test Pub/Sub connection
+    try:
+        publisher = pubsub_v1.PublisherClient()
+        topic_path = publisher.topic_path(project, pubsub_topic_id)
+        # To truly test connectivity and permissions, we'll publish a simple message.
+        future = publisher.publish(topic_path, b"integration test message")
+        message_id = future.result(timeout=10) # Wait for the result with a timeout
+        assert message_id is not None
+        print(f"Successfully published test message to Pub/Sub topic: {topic_path}")
+    except exceptions.NotFound:
+        pytest.fail(f"Pub/Sub topic '{pubsub_topic_id}' not found in project '{project}'.")
+    except exceptions.Forbidden:
+        pytest.fail(f"Permission denied for Pub/Sub topic '{pubsub_topic_id}'. Check IAM permissions (e.g., 'Pub/Sub Publisher' role).")
+    except Exception as e:
+        pytest.fail(f"An unexpected error occurred during the Pub/Sub connectivity test: {e}")
