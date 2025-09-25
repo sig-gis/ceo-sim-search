@@ -12,13 +12,13 @@ from src.prep import prep_tables
 @patch('src.prep.gdf_to_fc')
 @patch('src.prep.plot_to_gdf')
 def test_prep_tables_small_dataset_no_vector_index(
-    mock_publish_job_status,
     mock_plot_to_gdf,
     mock_gdf_to_fc,
     mock_efm_plot_agg,
     mock_export_to_bq,
     mock_postprocess_bq,
-    mock_vector_index
+    mock_vector_index,
+    mock_publish_job_status
 ):
     """
     Tests prep_tables with a small dataset (< 5000 rows)
@@ -80,13 +80,13 @@ def test_prep_tables_small_dataset_no_vector_index(
 @patch('src.prep.gdf_to_fc')
 @patch('src.prep.plot_to_gdf')
 def test_prep_tables_large_dataset_creates_vector_index(
-    mock_publish_job_status,
     mock_plot_to_gdf,
     mock_gdf_to_fc,
     mock_efm_plot_agg,
     mock_export_to_bq,
     mock_postprocess_bq,
-    mock_vector_index
+    mock_vector_index,
+    mock_publish_job_status
 ):
     """
     Tests prep_tables with a large dataset (> 5000 rows)
