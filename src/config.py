@@ -30,7 +30,7 @@ class AppSettings(BaseSettings):
         return GcpSettings(project=self.gcp_project, 
                            bq_dataset=self.gcp_bq_dataset, 
                            bucket=self.gcp_bucket,
-                           pubsub_topic_table_jobs=self.pubsub_topic_table_jobs)
+                           pubsub_topic_table_jobs=self.gcp_pubsub_topic_table_jobs)
 
 @lru_cache()
 def get_settings() -> AppSettings:
