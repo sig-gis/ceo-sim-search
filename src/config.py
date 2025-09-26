@@ -16,7 +16,7 @@ class AppSettings(BaseSettings):
     gcp_project: str = Field(..., alias='GCP_PROJECT')
     gcp_bq_dataset: str = Field(..., alias='GCP_BQ_DATASET')
     gcp_bucket: str = Field(..., alias='GCP_BUCKET')
-    pubsub_topic_table_jobs: str = Field(..., alias='GCP_PUBSUB_TOPIC_TABLE_JOBS')
+    gcp_pubsub_topic_table_jobs: str = Field(..., alias='GCP_PUBSUB_TOPIC_TABLE_JOBS')
 
     model_config = SettingsConfigDict(
         env_file='.env', # Load environment variables from .env file for local development

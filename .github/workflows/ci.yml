@@ -70,4 +70,6 @@ jobs:
           GCP_PROJECT: ${{ secrets.GCP_PROJECT_ID }}
           GCP_BQ_DATASET: ${{ secrets.GCP_BQ_DATASET }}
           GCP_BUCKET: ${{ secrets.GCP_BUCKET }}
+          GCP_PUBSUB_TOPIC_TABLE_JOBS: ${{ secrets.GCP_PUBSUB_TOPIC_TABLE_JOBS }}
+
         run: pytest tests/test_integration.py
