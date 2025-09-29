@@ -66,9 +66,8 @@ jobs:
       - name: Build and Push Docker image
         run: |-
           gcloud builds submit --project=${{ env.GCP_PROJECT_ID }} \
-            --tag "gcr.io/${{ env.GCP_PROJECT_ID }}/${{ env.SERVICE_NAME }}:latest" \
-            --tag "gcr.io/${{ env.GCP_PROJECT_ID }}/${{ env.SERVICE_NAME }}:${{ github.sha }}"
-
+            --tag "gcr.io/${{ env.GCP_PROJECT_ID }}/${{ env.SERVICE_NAME }}:latest"
+      
       - name: Deploy to Cloud Run
         run: |-
           gcloud run deploy ${{ env.SERVICE_NAME }} \
