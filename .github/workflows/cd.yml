@@ -65,17 +65,16 @@ jobs:
 
       - name: Build and Push Docker image
         run: |-
-          gcloud builds submit \
-          --tag gcr.io/${{ secrets.GCP_PROJECT_ID }}/ceo-sim-search-api:pubsub 
-          --tag gcr.io/${{ secrets.GCP_PROJECT_ID }}/${{ env.SERVICE_NAME }}:latest
+          gcloud builds submit --project=${{ env.GCP_PROJECT_ID }} \
+            --tag "gcr.io/${{ env.GCP_PROJECT_ID }}/${{ env.SERVICE_NAME }}:latest" \
+            --tag "gcr.io/${{ env.GCP_PROJECT_ID }}/${{ env.SERVICE_NAME }}:${{ github.sha }}"
 
       - name: Deploy to Cloud Run
         run: |-
-          gcloud run deploy ceo-sim-search-api \
           gcloud run deploy ${{ env.SERVICE_NAME }} \
-            --image gcr.io/${{ secrets.GCP_PROJECT_ID }}/ceo-sim-search-api:pubsub \
+            --image "gcr.io/${{ env.GCP_PROJECT_ID }}/${{ env.SERVICE_NAME }}:latest" \
             --platform managed \
             --region us-central1 \
             --allow-unauthenticated \
-            --service-account=${{ secrets.GCP_SERVICE_ACCOUNT }} \
-            --set-env-vars "GCP_PROJECT=${{ secrets.GCP_PROJECT_ID }},GCP_BQ_DATASET=${{ secrets.GCP_BQ_DATASET }},GCP_BUCKET=${{ secrets.GCP_BUCKET }},GCP_PUBSUB_TOPIC_TABLE_JOBS=${{ secrets.GCP_PUBSUB_TOPIC_TABLE_JOBS }}"
+            --service-account=${{ env.GCP_SERVICE_ACCOUNT }} \
+            --set-env-vars "GCP_PROJECT=${{ env.GCP_PROJECT_ID }},GCP_BQ_DATASET=${{ env.GCP_BQ_DATASET }},GCP_BUCKET=${{ env.GCP_BUCKET }},GCP_PUBSUB_TOPIC_TABLE_JOBS=${{ env.GCP_PUBSUB_TOPIC_TABLE_JOBS }}"
