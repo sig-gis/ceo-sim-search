@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - dev
-      - pubsub
       - 'feature/*' # Matches any branch starting with 'feature/'
   pull_request:
     branches:
