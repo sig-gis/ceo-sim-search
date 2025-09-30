@@ -44,6 +44,10 @@ def prep_tables(gcp_file:str,
                 topic_id: str
                 ) -> dict[int, str]:
     
+    # valid years of GSE are 2017-2024
+    if year not in range(2017,2025):
+        raise ValueError(f"Valid Year Range for Satellite Embeddings is 2017-2024. provided {year}")
+    
     plot_gdf = plot_to_gdf(gcp_file)
     plot_fc = gdf_to_fc(plot_gdf)
     

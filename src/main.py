@@ -165,7 +165,9 @@ async def handle_gcs_trigger(
 
         # Use regex to find all 4-digit numbers (years) in the filename.
         # Example: "ceo-plots_v2_2021_2022.geojson" -> ['2021', '2022']
-        years_str = re.findall(r'\b(\d{4})\b', filename)
+        # We use lookarounds to find 4-digit numbers not adjacent to other digits,
+        # which is more robust than word boundaries (\b).
+        years_str = re.findall(r'(?<!\d)(\d{4})(?!\d)', filename)
         if not years_str:
             # If no years are found, we cannot proceed. Log an error.
             # Eventarc will see the 400 and may try to redeliver, but it will keep failing.
