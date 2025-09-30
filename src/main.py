@@ -35,20 +35,16 @@ class PrepResponse(BaseModel):
 
 # --- Pydantic Models for Eventarc Payloads ---
 
-class CloudStorageObjectData(BaseModel):
-    """The 'data' payload for a GCS CloudEvent."""
+class GcsObjectFinalizeEvent(BaseModel):
+    """
+    Represents the payload sent by Eventarc for a GCS 'object.finalize' event.
+    This is the raw GCS Object metadata, not a standard CloudEvent wrapper.
+    """
     bucket: str
-    name: str # This is the file name
-
-class CloudEvent(BaseModel):
-    """
-    A generic CloudEvent model. Eventarc sends events in this format.
-    We only care about the 'data' field for GCS events.
-    """
-    data: CloudStorageObjectData
-    # Ignore extra fields in the CloudEvent payload (like 'specversion', 'type', etc.)
+    name: str  # This is the file name
+    # Ignore all other fields sent in the GCS object metadata payload.
     model_config = ConfigDict(extra="ignore")
-
+    
 # --- End Pydantic Models for Eventarc ---
 
 class SearchResponse(BaseModel):
@@ -150,7 +146,7 @@ async def run_search(
     
 @app.post("/events/gcs-trigger", status_code=202)
 async def handle_gcs_trigger(
-    event: CloudEvent,
+    event: GcsObjectFinalizeEvent,
     background_tasks: BackgroundTasks,
     settings: AppSettings = Depends(get_settings)
 ):
@@ -162,8 +158,8 @@ async def handle_gcs_trigger(
     logger.info(f"GCS Trigger: Received event {event}")
 
     try:
-        bucket = event.data.bucket
-        filename = event.data.name
+        bucket = event.bucket
+        filename = event.name
         gcp_file = f"gs://{bucket}/{filename}"
         logger.info("File to process: %s", gcp_file)
 
