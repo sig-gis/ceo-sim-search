@@ -142,11 +142,13 @@ async def handle_gcs_trigger(
     It extracts years from the filename (e.g., 'file_2022_2023.geojson')
     and triggers the background prep job.
     """
+    logger.info(f"GCS Trigger: Received event {event}")
+
     try:
         bucket = event.data.bucket
         filename = event.data.name
         gcp_file = f"gs://{bucket}/{filename}"
-        logger.info("GCS Trigger: Received event for file: %s", gcp_file)
+        logger.info("File to process: %s", gcp_file)
 
         # Use regex to find all 4-digit numbers (years) in the filename.
         # Example: "ceo-plots_v2_2021_2022.geojson" -> ['2021', '2022']
