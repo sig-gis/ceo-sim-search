@@ -33,22 +33,24 @@ jobs:
           BRANCH_NAME=$(echo "${GITHUB_REF}" | sed -E 's/refs\/[^\/]+\///')
           if [[ "$BRANCH_NAME" == "main" ]]; then
             echo "environment=prod" >> "$GITHUB_OUTPUT"
-            echo "service_suffix=_prod" >> "$GITHUB_OUTPUT"
+            echo "service_suffix=-prod" >> "$GITHUB_OUTPUT"
+            echo "resource_suffix=_prod" >> "$GITHUB_OUTPUT"
           else
             echo "environment=dev" >> "$GITHUB_OUTPUT"
-            echo "service_suffix=_dev" >> "$GITHUB_OUTPUT"
+            echo "service_suffix=-dev" >> "$GITHUB_OUTPUT"
+            echo "resource_suffix=_dev" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Set environment variables
         run: |
           echo "GCP_PROJECT_ID=${{ secrets.GCP_PROJECT_ID }}" >> $GITHUB_ENV
           echo "GCP_SERVICE_ACCOUNT=${{ secrets.GCP_SERVICE_ACCOUNT }}" >> $GITHUB_ENV
-          echo "GCP_BQ_DATASET=${{ secrets.GCP_BQ_DATASET }}${{ steps.determine_env.outputs.service_suffix }}" >> $GITHUB_ENV
-          echo "GCP_BUCKET=${{ secrets.GCP_BUCKET }}${{ steps.determine_env.outputs.service_suffix }}" >> $GITHUB_ENV
-          echo "GCP_PUBSUB_TOPIC_TABLE_JOBS=${{ secrets.GCP_PUBSUB_TOPIC_TABLE_JOBS }}${{ steps.determine_env.outputs.service_suffix }}" >> $GITHUB_ENV
+          echo "GCP_BQ_DATASET=${{ secrets.GCP_BQ_DATASET }}${{ steps.determine_env.outputs.resource_suffix }}" >> $GITHUB_ENV
+          echo "GCP_BUCKET=${{ secrets.GCP_BUCKET }}${{ steps.determine_env.outputs.resource_suffix }}" >> $GITHUB_ENV
+          echo "GCP_PUBSUB_TOPIC_TABLE_JOBS=${{ secrets.GCP_PUBSUB_TOPIC_TABLE_JOBS }}${{ steps.determine_env.outputs.resource_suffix }}" >> $GITHUB_ENV
           echo "SERVICE_NAME=ceo-sim-search-api${{ steps.determine_env.outputs.service_suffix }}" >> $GITHUB_ENV
           echo "SERVICE_SUFFIX=${{ steps.determine_env.outputs.service_suffix }}" >> $GITHUB_ENV
-      
+
       - name: Authenticate to Google Cloud
         uses: 'google-github-actions/auth@v2'
         with:
