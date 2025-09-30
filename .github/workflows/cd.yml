@@ -33,10 +33,10 @@ jobs:
           BRANCH_NAME=$(echo "${GITHUB_REF}" | sed -E 's/refs\/[^\/]+\///')
           if [[ "$BRANCH_NAME" == "main" ]]; then
             echo "environment=prod" >> "$GITHUB_OUTPUT"
-            echo "service_suffix=-prod" >> "$GITHUB_OUTPUT"
+            echo "service_suffix=_prod" >> "$GITHUB_OUTPUT"
           else
             echo "environment=dev" >> "$GITHUB_OUTPUT"
-            echo "service_suffix=-dev" >> "$GITHUB_OUTPUT"
+            echo "service_suffix=_dev" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Set environment variables
