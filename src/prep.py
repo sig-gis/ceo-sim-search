@@ -1,8 +1,29 @@
 import os
 import ee
 import google.auth
+import json
+from google.cloud import pubsub_v1
 
 from src.utils import efm_plot_agg, export_to_bq, postprocess_bq, vector_index, plot_to_gdf, gdf_to_fc
+
+
+def publish_job_status(project_id: str, topic_id: str, message_data: dict):
+    """
+    Publishes a JSON message to a Google Cloud Pub/Sub topic.
+
+    Args:
+        project_id (str): The Google Cloud project ID.
+        topic_id (str): The ID of the Pub/Sub topic.
+        message_data (dict): A dictionary containing the message payload.
+    """
+    publisher = pubsub_v1.PublisherClient()
+    topic_path = publisher.topic_path(project_id, topic_id)
+    data = json.dumps(message_data).encode("utf-8")
+    try:
+        future = publisher.publish(topic_path, data)
+        print(f"Published message {future.result()} to {topic_path} with data: {message_data}")
+    except Exception as e:
+        print(f"Failed to publish message to {topic_path}: {e}")
 
 
 def generate_processed_table_names(gcp_file: str, years: list[int]) -> dict[int, str]:
@@ -20,6 +41,7 @@ def prep_tables(gcp_file:str,
                 project:str,
                 dataset:str,
                 years:list[int],
+                topic_id: str
                 ) -> dict[int, str]:
     
     plot_gdf = plot_to_gdf(gcp_file)
@@ -30,8 +52,15 @@ def prep_tables(gcp_file:str,
     new_table_base = f"{os.path.basename(gcp_file).split('.')[0]}"
     processed_tables = {}
     for i,yr_embed in enumerate(fc_embeddings):
-        year_tag = str(years[i])
-        table = export_to_bq(yr_embed, # export the featurecollection to BQ table
+        year = years[i]
+        year_tag = str(year)
+        # DEV: valid years of GSE are 2017-2024 - would want to update this as more years become available
+        if year not in range(2017,2025):
+            print(f"Valid Year Range for Satellite Embeddings is 2017-2024. Will not process provided {year}")
+            continue
+        # If post-processing fails, we should not attempt to create an index.
+        try:
+            table = export_to_bq(yr_embed, # export the featurecollection to BQ table
                             project,
                             dataset,
                             new_table_base,
@@ -39,8 +68,6 @@ def prep_tables(gcp_file:str,
                             wait=True,
                             dry_run=False)
         
-        # If post-processing fails, we should not attempt to create an index.
-        try:
             pp_table = postprocess_bq(project,dataset,table,wait=True) # fix the schema of the exported table to contain one 'embedding' column containing a 1x64 array
 
             # BigQuery does not allow creating a VECTOR index on a table with < 5k rows.
@@ -51,9 +78,26 @@ def prep_tables(gcp_file:str,
                 vector_index(project,dataset,pp_table,embedding_col='embedding',wait=True)
 
             print(f"Successfully created and processed table: {pp_table}")
-            processed_tables[years[i]] = pp_table
+            processed_tables[year] = pp_table
+
+            # Publish SUCCESS message to Pub/Sub
+            success_message = {
+                "status": "SUCCESS",
+                "source_file": gcp_file,
+                "year": year,
+                "processed_table": f"{project}.{dataset}.{pp_table}"
+            }
+            publish_job_status(project, topic_id, success_message)
         except Exception as e:
             print(f"Failed to post-process or index table for year {year_tag}. Reason: {e}")
+            # Publish FAILURE message to Pub/Sub
+            failure_message = {
+                "status": "FAILURE",
+                "source_file": gcp_file,
+                "year": year,
+                "error": str(e)
+            }
+            publish_job_status(project, topic_id, failure_message)
             continue # Move to the next year in the loop
     return processed_tables
     
@@ -78,5 +122,6 @@ if __name__ == "__main__":
     prep_tables(gcp_file="gs://sim-search/ceo-100-plots.geojson",
                 project=project,
                 dataset=dataset,
-                years=[2018,2019]
+                years=[2018,2019],
+                topic_id=os.environ.get('GCP_PUBSUB_TOPIC_TABLE_JOBS') # For local run
                 )
