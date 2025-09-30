@@ -44,10 +44,6 @@ def prep_tables(gcp_file:str,
                 topic_id: str
                 ) -> dict[int, str]:
     
-    # valid years of GSE are 2017-2024
-    if year not in range(2017,2025):
-        raise ValueError(f"Valid Year Range for Satellite Embeddings is 2017-2024. provided {year}")
-    
     plot_gdf = plot_to_gdf(gcp_file)
     plot_fc = gdf_to_fc(plot_gdf)
     
@@ -58,6 +54,10 @@ def prep_tables(gcp_file:str,
     for i,yr_embed in enumerate(fc_embeddings):
         year = years[i]
         year_tag = str(year)
+        # DEV: valid years of GSE are 2017-2024 - would want to update this as more years become available
+        if year not in range(2017,2025):
+            print(f"Valid Year Range for Satellite Embeddings is 2017-2024. Will not process provided {year}")
+            continue
         # If post-processing fails, we should not attempt to create an index.
         try:
             table = export_to_bq(yr_embed, # export the featurecollection to BQ table
