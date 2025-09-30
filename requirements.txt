@@ -3,6 +3,7 @@ geopandas
 earthengine-api
 geojson
 google-cloud-bigquery
+google-cloud-pubsub
 pytest
 pytest-mock
 PyYAML

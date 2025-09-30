@@ -7,6 +7,7 @@ class GcpSettings(BaseModel):
     project: str
     bq_dataset: str
     bucket: str
+    pubsub_topic_table_jobs: str
 
 class AppSettings(BaseSettings):
     """The main settings object that loads all variables from the environment."""
@@ -15,6 +16,7 @@ class AppSettings(BaseSettings):
     gcp_project: str = Field(..., alias='GCP_PROJECT')
     gcp_bq_dataset: str = Field(..., alias='GCP_BQ_DATASET')
     gcp_bucket: str = Field(..., alias='GCP_BUCKET')
+    gcp_pubsub_topic_table_jobs: str = Field(..., alias='GCP_PUBSUB_TOPIC_TABLE_JOBS')
 
     model_config = SettingsConfigDict(
         env_file='.env', # Load environment variables from .env file for local development
@@ -25,7 +27,10 @@ class AppSettings(BaseSettings):
     @property
     def gcp(self) -> GcpSettings:
         """Provides a nested `gcp` object for convenient access in the app."""
-        return GcpSettings(project=self.gcp_project, bq_dataset=self.gcp_bq_dataset, bucket=self.gcp_bucket)
+        return GcpSettings(project=self.gcp_project, 
+                           bq_dataset=self.gcp_bq_dataset, 
+                           bucket=self.gcp_bucket,
+                           pubsub_topic_table_jobs=self.gcp_pubsub_topic_table_jobs)
 
 @lru_cache()
 def get_settings() -> AppSettings:

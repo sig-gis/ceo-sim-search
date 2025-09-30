@@ -1,12 +1,15 @@
 import logging
-from fastapi import FastAPI, BackgroundTasks, HTTPException, Depends, Query
-from pydantic import BaseModel, Field, ValidationError
+from fastapi import FastAPI, BackgroundTasks, HTTPException, Depends, Query, Request
+from pydantic import BaseModel, Field, ValidationError, ConfigDict
+import re
 import ee
 import google.auth
 
 from src.prep import prep_tables, generate_processed_table_names
 from src.search import search_result
 from src.config import get_settings, AppSettings
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
 
 # --- Configuration and Initialization ---
 
@@ -30,12 +33,39 @@ class PrepResponse(BaseModel):
     message: str
     tables: dict[int, str] = Field(..., example={2020: "your-file_2020_pp", 2021: "your-file_2021_pp"}, description="A dictionary mapping each year to the name of the BigQuery table that will be created.")
 
+# --- Pydantic Models for Eventarc Payloads ---
+
+class GcsObjectFinalizeEvent(BaseModel):
+    """
+    Represents the payload sent by Eventarc for a GCS 'object.finalize' event.
+    This is the raw GCS Object metadata, not a standard CloudEvent wrapper.
+    """
+    bucket: str
+    name: str  # This is the file name
+    # Ignore all other fields sent in the GCS object metadata payload.
+    model_config = ConfigDict(extra="ignore")
+    
+# --- End Pydantic Models for Eventarc ---
+
 class SearchResponse(BaseModel):
     target_plotid: int
     base_plotid: int
     distance: float
 
 # --- API Endpoints ---
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    """
+    Custom exception handler for Pydantic validation errors.
+    This logs the body of the invalid request, which is crucial for debugging
+    webhook and Eventarc integrations, then returns the default 422 response.
+    """
+    # Log the request body to see what payload caused the validation error
+    request_body = await request.body()
+    logger.error("Request validation failed. Invalid payload received: %s", request_body.decode('utf-8'))
+    # You can also log exc.errors() for a structured list of validation errors
+    return JSONResponse(status_code=422, content={"detail": exc.errors()})
 
 @app.on_event("startup")
 async def startup_event():
@@ -87,7 +117,12 @@ async def create_prep_job(
     table_names = generate_processed_table_names(request.gcp_file, request.years)
 
     background_tasks.add_task(
-        prep_tables, request.gcp_file, settings.gcp.project, settings.gcp.bq_dataset, request.years
+        prep_tables,
+        request.gcp_file,
+        settings.gcp.project,
+        settings.gcp.bq_dataset,
+        request.years,
+        settings.gcp.pubsub_topic_table_jobs
     )
     return {"message": "Data preparation job accepted and running in the background.", "tables": table_names}
 
@@ -95,7 +130,7 @@ async def create_prep_job(
 async def run_search(
     uniqueid: int = Query(..., description="Unique ID of the plot to search for.", example=5),
     table: str = Query(..., description="The BigQuery table to search within.", example="my_processed_table_pp"),
-    matches: int = Query(5, ge=1, le=50, description="Number of matches to return."),
+    matches: int = Query(5, gt=0, description="Number of matches to return."),
     settings: AppSettings = Depends(get_settings)
 ):
     """
@@ -108,3 +143,55 @@ async def run_search(
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {e}")
+    
+@app.post("/events/gcs-trigger", status_code=202)
+async def handle_gcs_trigger(
+    event: GcsObjectFinalizeEvent,
+    background_tasks: BackgroundTasks,
+    settings: AppSettings = Depends(get_settings)
+):
+    """
+    Eventarc endpoint to handle GCS 'object.finalized' events.
+    It extracts years from the filename (e.g., 'file_2022_2023.geojson')
+    and triggers the background prep job.
+    """
+    logger.info(f"GCS Trigger: Received event {event}")
+
+    try:
+        bucket = event.bucket
+        filename = event.name
+        gcp_file = f"gs://{bucket}/{filename}"
+        logger.info("File to process: %s", gcp_file)
+
+        # Use regex to find all 4-digit numbers (years) in the filename.
+        # Example: "ceo-plots_v2_2021_2022.geojson" -> ['2021', '2022']
+        # We use lookarounds to find 4-digit numbers not adjacent to other digits,
+        # which is more robust than word boundaries (\b).
+        years_str = re.findall(r'(?<!\d)(\d{4})(?!\d)', filename)
+        if not years_str:
+            # If no years are found, we cannot proceed. Log an error.
+            # Eventarc will see the 400 and may try to redeliver, but it will keep failing.
+            # This is appropriate as the file is named incorrectly.
+            raise HTTPException(status_code=400, detail=f"Filename '{filename}' does not contain any 4-digit years. Cannot process.")
+
+        years = [int(y) for y in years_str]
+
+        background_tasks.add_task(
+            prep_tables,
+            gcp_file,
+            settings.gcp.project,
+            settings.gcp.bq_dataset,
+            years,
+            settings.gcp.pubsub_topic_table_jobs
+        )
+        
+        table_names = generate_processed_table_names(gcp_file, years)
+        
+        return {"message": f"Accepted job for {gcp_file} for years {years}.",
+                "tables": table_names}
+    except ValidationError as e:
+        logger.error("GCS Trigger: Invalid CloudEvent payload received: %s", e)
+        raise HTTPException(status_code=400, detail=f"Invalid CloudEvent payload: {e}")
+    except Exception as e:
+        logger.error("GCS Trigger: An unexpected error occurred: %s", e)
+        raise HTTPException

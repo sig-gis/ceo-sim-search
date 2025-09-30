@@ -169,7 +169,7 @@ def export_to_bq(fc:ee.FeatureCollection,
         if not all((isinstance(yr_tag,str), len(yr_tag)==4)):
              raise ValueError(f" yr_tag expects a %04 formatted string (e.g. '2023'). provided {yr_tag}")
         # Removed random id for deterministic naming, allowing front-end to know table names in advance.
-        tb = f'{project}.{dataset}.{table}_{yr_tag}'
+        tb = f'{project}.{dataset}.{table}_embed{yr_tag}'
         if len(tb) > 100: # simpler if desc and out table are same but ee.export desc has 100 char limit; 
                 base_char_len = len(tb)-len(table)
                 leftovers = 100-base_char_len
