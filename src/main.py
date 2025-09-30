@@ -1,6 +1,6 @@
 import logging
-from fastapi import FastAPI, BackgroundTasks, HTTPException, Depends, Query
-from pydantic import BaseModel, Field, ValidationError
+from fastapi import FastAPI, BackgroundTasks, HTTPException, Depends, Query, Request
+from pydantic import BaseModel, Field, ValidationError, ConfigDict
 import re
 import ee
 import google.auth
@@ -8,6 +8,8 @@ import google.auth
 from src.prep import prep_tables, generate_processed_table_names
 from src.search import search_result
 from src.config import get_settings, AppSettings
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
 
 # --- Configuration and Initialization ---
 
@@ -44,6 +46,8 @@ class CloudEvent(BaseModel):
     We only care about the 'data' field for GCS events.
     """
     data: CloudStorageObjectData
+    # Ignore extra fields in the CloudEvent payload (like 'specversion', 'type', etc.)
+    model_config = ConfigDict(extra="ignore")
 
 # --- End Pydantic Models for Eventarc ---
 
@@ -53,6 +57,19 @@ class SearchResponse(BaseModel):
     distance: float
 
 # --- API Endpoints ---
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    """
+    Custom exception handler for Pydantic validation errors.
+    This logs the body of the invalid request, which is crucial for debugging
+    webhook and Eventarc integrations, then returns the default 422 response.
+    """
+    # Log the request body to see what payload caused the validation error
+    request_body = await request.body()
+    logger.error("Request validation failed. Invalid payload received: %s", request_body.decode('utf-8'))
+    # You can also log exc.errors() for a structured list of validation errors
+    return JSONResponse(status_code=422, content={"detail": exc.errors()})
 
 @app.on_event("startup")
 async def startup_event():
