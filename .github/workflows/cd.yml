@@ -5,12 +5,10 @@ on:
     branches:
       - main
       - dev
-      - pubsub
   pull_request:
     branches:
       - main
       - dev
-      - pubsub
 
 
 permissions:
